@@ -7,18 +7,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio_ext.h>
 
 /*
  * Cliente TCP
  */
+
+struct mensagem{
+
+	int validade;
+	char usuario[20];
+	char mensagem[80];
+
+};
+
 int main(int argc, char **argv)
 {
     unsigned short port;       
-    char sendbuf[12];              
-    char recvbuf[12];              
+    char sendbuf[512];              
+    char recvbuf[512];              
     struct hostent *hostnm;    
     struct sockaddr_in server; 
-    int s;                     
+	  struct mensagem msg;
+    int s, op, n = 0, full;                     
 
     /*
      * O primeiro argumento (argv[1]) e o hostname do servidor.
@@ -64,24 +75,120 @@ int main(int argc, char **argv)
         exit(4);
     }
 
-    strcpy(sendbuf, "Requisicao");
+    do{
 
-    /* Envia a mensagem no buffer de envio para o servidor */
-    if (send(s, sendbuf, strlen(sendbuf)+1, 0) < 0)
-    {
-        perror("Send()");
-        exit(5);
-    }
-    printf("Mensagem enviada ao servidor: %s\n", sendbuf);
+       printf("Opcoes:\n 1 - Cadastrar mensagem\n 2 - Ler mensagens\n 3 - Apagar mensagens\n 4 - Sair da Aplicacao\n > ");
 
-    /* Recebe a mensagem do servidor no buffer de recepcao */
-    if (recv(s, recvbuf, sizeof(recvbuf), 0) < 0)
-    {
-        perror("Recv()");
-        exit(6);
-    }
-    printf("Mensagem recebida do servidor: %s\n", recvbuf);
+				scanf("%d",&op);
 
+				if(op >= 1 && op <= 4){
+				  /* Envia a mensagem no buffer de envio para o servidor */
+				  if (send(s, &op, sizeof(int), 0) < 0)
+				  {
+				      perror("Send()");
+				      exit(5);
+				  }
+
+					system("clear");
+				}
+
+     		switch(op){
+
+				 case 1:
+
+					printf("Usuario: ");
+					__fpurge(stdin);
+					gets(msg.usuario);
+
+					printf("Mensagem: ");
+					__fpurge(stdin);
+					gets(msg.mensagem);
+
+					msg.validade = 1;
+
+				  if (send(s, &msg, sizeof(msg), 0) < 0){
+		          perror("Send()");
+		          exit(5);
+		      }
+
+					if (recv(s, &full, sizeof(full), 0) == -1){
+							perror("Recv()");
+							exit(6);
+					}
+
+					if(full)
+						printf("Memoria Cheia! A mensagem nao foi gravada.\n");
+
+					printf("\nPressione qualquer tecla...\n");
+					__fpurge(stdin);
+					getchar();
+					break;
+
+				 case 2:
+		
+						if (recv(s, &n, sizeof(n), 0) == -1){
+								perror("Recv()");
+								exit(6);
+						}
+
+						printf("Mensagens cadastradas: %d\n",n);
+
+						for(int i = 0; i < n; i++){
+						
+								if (recv(s, &msg, sizeof(msg), 0) == -1){
+										perror("Recv()");
+										exit(6);
+								}
+
+								printf("Usuario: %s		Mensagem: %s\n",msg.usuario,msg.mensagem);
+						}
+
+						printf("\nPressione qualquer tecla...\n");
+						__fpurge(stdin);
+						getchar();
+					break;
+
+				 case 3:
+
+					printf("Usuario: ");
+					__fpurge(stdin);
+					gets(sendbuf);
+
+					if (send(s, sendbuf, sizeof(sendbuf), 0) < 0){
+							perror("Send()");
+							exit(7);
+					}
+
+					if (recv(s, &n, sizeof(n), 0) == -1){
+							perror("Recv()");
+							exit(6);
+				  }
+
+					printf("Mensagens apagadas: %d\n",n);
+
+					for(int i = 0; i < n; i++){
+
+							if (recv(s, &msg, sizeof(msg), 0) == -1){
+								perror("Recv()");
+								exit(6);
+				  		}
+
+							printf("Usuario: %s		Mensagem: %s\n",msg.usuario,msg.mensagem);				
+						
+					}
+
+					printf("\nPressione qualquer tecla...\n");
+					__fpurge(stdin);
+					getchar();
+
+					break;
+       }
+
+			 system("clear");
+
+			 n = 0;
+    }while(op != 4);
+	
     /* Fecha o socket */
     close(s);
 
