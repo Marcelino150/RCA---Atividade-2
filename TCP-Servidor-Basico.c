@@ -8,16 +8,29 @@
 /*
  * Servidor TCP
  */
+
+struct mensagem{
+
+	int validade; 
+	char usuario[20];
+	char mensagem[80];
+
+};
+
 int main(int argc, char **argv)
 {
     unsigned short port;       
-    char sendbuf[12];              
-    char recvbuf[12];              
+    //char sendbuf[12];              
+    char recvbuf[512];  
+		//char *sendbuf;            
     struct sockaddr_in client; 
     struct sockaddr_in server; 
     int s;                     /* Socket para aceitar conexoes       */
     int ns;                    /* Socket conectado ao cliente        */
-    int namelen;               
+    int namelen;
+    int op, n = 0, nmsgs = 0, full = 0;
+		struct mensagem msgs[5];
+		struct mensagem recvmsg;               
 
     /*
      * O primeiro argumento (argv[1]) e a porta
@@ -79,24 +92,108 @@ int main(int argc, char **argv)
         exit(5);
     }
 
-    /* Recebe uma mensagem do cliente atraves do novo socket conectado */
-    if (recv(ns, recvbuf, sizeof(recvbuf), 0) == -1)
-    {
-        perror("Recv()");
-        exit(6);
-    }
-    printf("Mensagem recebida do cliente: %s\n", recvbuf);
+		for(int i = 0; i < 5; i++)
+				msgs[i].validade = 0;
 
-    strcpy(sendbuf, "Resposta");
-    
-    /* Envia uma mensagem ao cliente atraves do socket conectado */
-    if (send(ns, sendbuf, strlen(sendbuf)+1, 0) < 0)
-    {
-        perror("Send()");
-        exit(7);
-    }
-    printf("Mensagem enviada ao cliente: %s\n", sendbuf);
 
+		do{
+
+				/* Recebe uma mensagem do cliente atraves do novo socket conectado */
+				if (recv(ns, &op, sizeof(op), 0) == -1)
+				{
+				    perror("Recv()");
+				    exit(6);
+				}
+
+				switch(op){
+
+					case 1:
+
+						if (recv(ns, &recvmsg, sizeof(recvmsg), 0) == -1){
+								perror("Recv()");
+								exit(6);
+						}
+
+						if(nmsgs == 5)
+								full = 1;
+						else
+								full = 0;
+
+						if (send(ns, &full, sizeof(full), 0) < 0){
+				        perror("Send()");
+				        exit(5);
+				    }
+
+						for(int i = 0; i < 5; i++)
+							if(msgs[i].validade == 0){
+								msgs[i] = recvmsg;
+								nmsgs++;
+								break;
+						  }
+
+						 break;
+
+					case 2:					 
+
+						 if (send(ns, &nmsgs, sizeof(nmsgs), 0) < 0){
+									perror("Send()");
+									exit(7);
+						 }						 
+						
+						 for(int i = 0; i < 5; i++)
+								if(msgs[i].validade != 0)
+									if (send(ns, &msgs[i], sizeof(msgs[i]), 0) < 0){
+										perror("Send()");
+										exit(7);
+							 		}
+
+						 break;
+
+					case 3:	
+				
+								if (recv(ns, recvbuf, sizeof(recvbuf), 0) == -1){
+										perror("Recv()");
+										exit(6);
+								}
+
+								for(int i = 0; i < 5; i++)
+										if(strcmp(msgs[i].usuario,recvbuf) == 0){
+											n++;
+										}	
+
+								if (send(ns, &n, sizeof(n), 0) < 0){
+									perror("Send()");
+									exit(7);
+						 		}
+
+							  for(int i = 0; i < 5; i++){
+									if(strcmp(msgs[i].usuario,recvbuf) == 0){
+										if (send(ns, &msgs[i], sizeof(msgs[i]), 0) < 0){
+											perror("Send()");
+											exit(7);
+								 		}
+										msgs[i].validade = 0;
+										nmsgs-- ;
+									}
+								}
+
+								n = 0;
+
+						 break;
+				
+					case 4:
+
+						if ((ns = accept(s, (struct sockaddr *)&client, (socklen_t *)&namelen)) == -1)
+  					{
+        				perror("Accept()");
+        				exit(5);
+    				}
+
+						break;
+
+				}
+
+		}while(1);
     /* Fecha o socket conectado ao cliente */
     close(ns);
 
