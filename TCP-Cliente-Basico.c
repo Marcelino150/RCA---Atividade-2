@@ -79,114 +79,115 @@ int main(int argc, char **argv)
 
        printf("Opcoes:\n 1 - Cadastrar mensagem\n 2 - Ler mensagens\n 3 - Apagar mensagens\n 4 - Sair da Aplicacao\n > ");
 
-				scanf("%d",&op);
+	scanf("%d",&op);
 
-				if(op >= 1 && op <= 4){
-				  /* Envia a mensagem no buffer de envio para o servidor */
-				  if (send(s, &op, sizeof(int), 0) < 0)
-				  {
-				      perror("Send()");
-				      exit(5);
-				  }
+	if(op >= 1 && op <= 4){
+	  /* Envia a mensagem no buffer de envio para o servidor */
+	  if (send(s, &op, sizeof(int), 0) < 0)
+	  {
+		perror("Send()");
+		exit(5);
+	  }
 
-					system("clear");
+		system("clear");
+	}
+
+	switch(op){
+
+		case 1:
+
+			printf("Usuario: ");
+			__fpurge(stdin);
+			gets(msg.usuario);
+
+			printf("Mensagem: ");
+			__fpurge(stdin);
+			gets(msg.mensagem);
+
+			msg.validade = 1;
+
+		  	if (send(s, &msg, sizeof(msg), 0) < 0){
+          			perror("Send()");
+          			exit(6);
+      			}
+
+			if (recv(s, &full, sizeof(full), 0) == -1){
+				perror("Recv()");
+				exit(7);
+			}
+
+			if(full)
+				printf("Memoria cheia! A mensagem nao foi gravada.\n");
+			else
+				printf("Operacao concluida!\n");
+
+			printf("\nPressione qualquer tecla...\n");
+			__fpurge(stdin);
+			getchar();
+			break;
+
+		 case 2:
+
+			if (recv(s, &n, sizeof(n), 0) == -1){
+				perror("Recv()");
+				exit(8);
+			}
+
+			printf("Mensagens cadastradas: %d\n",n);
+
+			for(int i = 0; i < n; i++){
+			
+				if (recv(s, &msg, sizeof(msg), 0) == -1){
+						perror("Recv()");
+						exit(9);
 				}
 
-     		switch(op){
+				printf("Usuario: %s		Mensagem: %s\n",msg.usuario,msg.mensagem);
+			}
 
-				 case 1:
+			printf("\nPressione qualquer tecla...\n");
+			__fpurge(stdin);
+			getchar();
+			break;
 
-					printf("Usuario: ");
-					__fpurge(stdin);
-					gets(msg.usuario);
+		 case 3:
 
-					printf("Mensagem: ");
-					__fpurge(stdin);
-					gets(msg.mensagem);
+			printf("Usuario: ");
+			__fpurge(stdin);
+			gets(sendbuf);
 
-					msg.validade = 1;
+			if (send(s, sendbuf, sizeof(sendbuf), 0) < 0){
+				perror("Send()");
+				exit(10);
+			}
 
-				  if (send(s, &msg, sizeof(msg), 0) < 0){
-		          perror("Send()");
-		          exit(5);
-		      }
+			if (recv(s, &n, sizeof(n), 0) == -1){
+				perror("Recv()");
+				exit(11);
+		  	}
 
-					if (recv(s, &full, sizeof(full), 0) == -1){
-							perror("Recv()");
-							exit(6);
-					}
+			printf("Mensagens apagadas: %d\n",n);
 
-					if(full)
-						printf("Memoria Cheia! A mensagem nao foi gravada.\n");
+			for(int i = 0; i < n; i++){
 
-					printf("\nPressione qualquer tecla...\n");
-					__fpurge(stdin);
-					getchar();
-					break;
+				if (recv(s, &msg, sizeof(msg), 0) == -1){
+					perror("Recv()");
+					exit(12);
+		  		}
 
-				 case 2:
-		
-						if (recv(s, &n, sizeof(n), 0) == -1){
-								perror("Recv()");
-								exit(6);
-						}
+				printf("Usuario: %s	Mensagem: %s\n",msg.usuario,msg.mensagem);								
+			}
 
-						printf("Mensagens cadastradas: %d\n",n);
+			printf("\nPressione qualquer tecla...\n");
+			__fpurge(stdin);
+			getchar();
 
-						for(int i = 0; i < n; i++){
-						
-								if (recv(s, &msg, sizeof(msg), 0) == -1){
-										perror("Recv()");
-										exit(6);
-								}
+			break;
+	}
 
-								printf("Usuario: %s		Mensagem: %s\n",msg.usuario,msg.mensagem);
-						}
+	system("clear");
+	n = 0;
 
-						printf("\nPressione qualquer tecla...\n");
-						__fpurge(stdin);
-						getchar();
-					break;
-
-				 case 3:
-
-					printf("Usuario: ");
-					__fpurge(stdin);
-					gets(sendbuf);
-
-					if (send(s, sendbuf, sizeof(sendbuf), 0) < 0){
-							perror("Send()");
-							exit(7);
-					}
-
-					if (recv(s, &n, sizeof(n), 0) == -1){
-							perror("Recv()");
-							exit(6);
-				  }
-
-					printf("Mensagens apagadas: %d\n",n);
-
-					for(int i = 0; i < n; i++){
-
-							if (recv(s, &msg, sizeof(msg), 0) == -1){
-								perror("Recv()");
-								exit(6);
-				  		}
-
-							printf("Usuario: %s		Mensagem: %s\n",msg.usuario,msg.mensagem);				
-						
-					}
-
-					printf("\nPressione qualquer tecla...\n");
-					__fpurge(stdin);
-					getchar();
-
-					break;
-       }
-
-			 system("clear");
-
-			 n = 0;
     }while(op != 4);
 	
     /* Fecha o socket */
