@@ -92,108 +92,126 @@ int main(int argc, char **argv)
         exit(5);
     }
 
-		for(int i = 0; i < 5; i++)
-				msgs[i].validade = 0;
+	for(int i = 0; i < 5; i++){
+		msgs[i].validade = 0;
+	}
 
 
-		do{
+	do{
 
-				/* Recebe uma mensagem do cliente atraves do novo socket conectado */
-				if (recv(ns, &op, sizeof(op), 0) == -1)
-				{
-				    perror("Recv()");
-				    exit(6);
+		/* Recebe a operação do cliente*/
+		if (recv(ns, &op, sizeof(op), 0) == -1)
+		{
+		    perror("Recv()");
+		    exit(6);
+		}
+
+		switch(op){
+
+			/* Cadastra nova mensagem */
+			case 1:
+
+				if (recv(ns, &recvmsg, sizeof(recvmsg), 0) == -1){
+					perror("Recv()");
+					exit(7);
 				}
 
-				switch(op){
+				if(nmsgs == 5){
+					full = 1;
+				}
+				else{
+					full = 0;
+				}
 
-					case 1:
+				if (send(ns, &full, sizeof(full), 0) < 0){
+					perror("Send()");
+					exit(8);
+		    		}
 
-						if (recv(ns, &recvmsg, sizeof(recvmsg), 0) == -1){
-								perror("Recv()");
-								exit(6);
-						}
-
-						if(nmsgs == 5)
-								full = 1;
-						else
-								full = 0;
-
-						if (send(ns, &full, sizeof(full), 0) < 0){
-				        perror("Send()");
-				        exit(5);
-				    }
-
-						for(int i = 0; i < 5; i++)
-							if(msgs[i].validade == 0){
-								msgs[i] = recvmsg;
-								nmsgs++;
-								break;
-						  }
-
-						 break;
-
-					case 2:					 
-
-						 if (send(ns, &nmsgs, sizeof(nmsgs), 0) < 0){
-									perror("Send()");
-									exit(7);
-						 }						 
-						
-						 for(int i = 0; i < 5; i++)
-								if(msgs[i].validade != 0)
-									if (send(ns, &msgs[i], sizeof(msgs[i]), 0) < 0){
-										perror("Send()");
-										exit(7);
-							 		}
-
-						 break;
-
-					case 3:	
-				
-								if (recv(ns, recvbuf, sizeof(recvbuf), 0) == -1){
-										perror("Recv()");
-										exit(6);
-								}
-
-								for(int i = 0; i < 5; i++)
-										if(strcmp(msgs[i].usuario,recvbuf) == 0){
-											n++;
-										}	
-
-								if (send(ns, &n, sizeof(n), 0) < 0){
-									perror("Send()");
-									exit(7);
-						 		}
-
-							  for(int i = 0; i < 5; i++){
-									if(strcmp(msgs[i].usuario,recvbuf) == 0){
-										if (send(ns, &msgs[i], sizeof(msgs[i]), 0) < 0){
-											perror("Send()");
-											exit(7);
-								 		}
-										msgs[i].validade = 0;
-										nmsgs-- ;
-									}
-								}
-
-								n = 0;
-
-						 break;
-				
-					case 4:
-
-						if ((ns = accept(s, (struct sockaddr *)&client, (socklen_t *)&namelen)) == -1)
-  					{
-        				perror("Accept()");
-        				exit(5);
-    				}
-
+				for(int i = 0; i < 5; i++){
+					if(msgs[i].validade == 0){
+						msgs[i] = recvmsg;
+						nmsgs++;
+						printf("Mensagem de %s cadastrada!\n",recvmsg.usuario);
 						break;
-
+				  	}
 				}
 
-		}while(1);
+				break;
+
+			/* Envia todos as mensasgens cadastradas */
+			case 2:					 
+
+				if (send(ns, &nmsgs, sizeof(nmsgs), 0) < 0){
+					perror("Send()");
+					exit(9);
+				}						 
+				
+				for(int i = 0; i < 5; i++){
+					if(msgs[i].validade != 0){
+						if (send(ns, &msgs[i], sizeof(msgs[i]), 0) < 0){
+							perror("Send()");
+							exit(10);
+				 		}
+					}
+				}
+
+				printf("Todas as mensagens foram enviadas ao cliente!\n");
+
+				break;
+
+			/* Remove mensagens cadastrada*/
+			case 3:	
+		
+				if (recv(ns, recvbuf, sizeof(recvbuf), 0) == -1){
+					perror("Recv()");
+					exit(11);
+				}
+
+				for(int i = 0; i < 5; i++)
+					if(strcmp(msgs[i].usuario,recvbuf) == 0){
+						n++;
+					}	
+
+				if (send(ns, &n, sizeof(n), 0) < 0){
+					perror("Send()");
+					exit(12);
+		 		}
+
+			  	for(int i = 0; i < 5; i++){
+					if(strcmp(msgs[i].usuario,recvbuf) == 0){
+						if (send(ns, &msgs[i], sizeof(msgs[i]), 0) < 0){
+							perror("Send()");
+							exit(13);
+				 		}
+
+						msgs[i].validade = 0;
+						nmsgs-- ;
+					}
+				}
+
+				if(n != 0){
+					printf("%d mensagens do usuario %s foram removidas!\n",n,recvbuf);
+				}
+
+				n = 0;
+
+				 break;
+		
+			/* Aceita a/aguarda pela proxima conexão da fila se o cliente desconectar*/
+			case 4:
+
+				printf("Conexão encerrada.\n");
+
+				if ((ns = accept(s, (struct sockaddr *)&client, (socklen_t *)&namelen)) == -1){
+					perror("Accept()");
+					exit(14);
+				}
+
+				break;
+		}
+
+	}while(1);
     /* Fecha o socket conectado ao cliente */
     close(ns);
 
